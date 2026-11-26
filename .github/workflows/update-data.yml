@@ -1,0 +1,51 @@
+name: Оновлення даних голосування
+
+on:
+  schedule:
+    - cron: "17 * * * *"   # щогодини
+  workflow_dispatch:        # кнопка «Run workflow»
+  push:
+    paths:
+      - .github/workflows/update-data.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Завантажити CSV з Google Таблиць
+        env:
+          PUB: https://docs.google.com/spreadsheets/d/e/2PACX-1vQWHHrpf2Uzxb2_uWb9YwObT76pYFKWvV1A2am8orgnHHdU4N7JGDz11i9e4Dote23zyEV_d8S3adyY/pub?single=true&output=csv&gid=
+        run: |
+          set -euo pipefail
+          mkdir -p data
+          curl -fsSL --retry 3 --max-time 60 "${PUB}980012" -o /tmp/summary.csv
+          curl -fsSL --retry 3 --max-time 60 "${PUB}2026112402" -o /tmp/map.csv
+          # Перевірка, що прийшли саме потрібні аркуші, а не помилка чи інший аркуш
+          grep -q "Голова зборів" /tmp/summary.csv || { echo "summary.csv: неочікуваний вміст"; exit 1; }
+          head -1 /tmp/map.csv | grep -q "Приміщення" || { echo "map.csv: неочікуваний вміст"; exit 1; }
+          [ "$(wc -l < /tmp/map.csv)" -gt 500 ] || { echo "map.csv: замало рядків"; exit 1; }
+          changed=0
+          for f in summary map; do
+            if ! cmp -s /tmp/$f.csv data/$f.csv; then cp /tmp/$f.csv data/$f.csv; changed=1; fi
+          done
+          if [ $changed = 1 ] || [ ! -f data/meta.json ]; then
+            printf '{"updated":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > data/meta.json
+          fi
+
+      - name: Зберегти зміни
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then echo "Без змін"; exit 0; fi
+          git commit -m "Оновлено дані голосування"
+          git push

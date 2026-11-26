@@ -2,7 +2,7 @@ name: Оновлення даних голосування
 
 on:
   schedule:
-    - cron: "17 * * * *"   # щогодини
+    - cron: "7,37 * * * *"   # двічі на годину (GitHub іноді пропускає запуски)
   workflow_dispatch:        # кнопка «Run workflow»
   push:
     paths:
@@ -37,9 +37,10 @@ jobs:
           for f in summary map; do
             if ! cmp -s /tmp/$f.csv data/$f.csv; then cp /tmp/$f.csv data/$f.csv; changed=1; fi
           done
-          if [ $changed = 1 ] || [ ! -f data/meta.json ]; then
-            printf '{"updated":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > data/meta.json
-          fi
+          now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          upd=$(sed -n 's/.*"updated":"\([^"]*\)".*/\1/p' data/meta.json 2>/dev/null || true)
+          if [ $changed = 1 ] || [ -z "$upd" ]; then upd=$now; fi
+          printf '{"updated":"%s","checked":"%s"}\n' "$upd" "$now" > data/meta.json
 
       - name: Зберегти зміни
         run: |

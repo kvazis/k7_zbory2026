@@ -148,7 +148,7 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:14px}
 
 <script>
 {
-let ASOF="26.11.2026",LIVE=false;
+let ASOF="26.11.2026",LIVE=false,CHK="";
 const TOT=70112.4;
 const Q=[
 {n:1,t:"Про обрання голови загальних зборів.",s:"Голова зборів",cnt:true,z:17,p:3,all:20,
@@ -226,7 +226,7 @@ $("turn").textContent=pc(voted/TOT);$("totA").textContent=f(TOT,1);
 $("meterLbl").setAttribute("aria-label","Проголосувало "+pc(voted/TOT)+" площі, поріг 50%");
 requestAnimationFrame(()=>$("meterFill").style.width=(voted/TOT*100)+"%");
 $("kv").innerHTML=[[f(voted,1)+" м²","з "+f(TOT,1)+" м² загальної площі"],[f(owners),"власників уже проголосували"],[f(need-voted,1)+" м²","ще потрібно, щоб явка перейшла 50%"]].map(([a,b])=>`<div><b>${a}</b><span>${b}</span></div>`).join("");
-$("asof").textContent=LIVE?"Дані з реєстру голосування ОСББ · оновлено "+ASOF+". Оновлюються автоматично щогодини.":"Дані станом на "+ASOF+" за реєстром голосування ОСББ.";}
+$("asof").textContent=LIVE?"Останні зміни в реєстрі голосування: "+ASOF+"."+(CHK?" Перевірено: "+CHK+".":"")+" Дані перевіряються автоматично кожні 30 хвилин.":"Дані станом на "+ASOF+" за реєстром голосування ОСББ.";}
 
 function res(q){if(q.off)return['off',"Знято"];if(q.cnt)return q.z/q.all>.5?['ok',"Прийнято"]:['no',"Не прийнято"];return q.z>need?['ok',"Прийнято"]:['no',"Поки не прийнято"]}
 $("chips").innerHTML=Q.map(q=>`<button data-n="${q.n}" class="${q.off?'off':''}" aria-pressed="false">${q.n} · ${esc(q.s)}</button>`).join("");
@@ -291,7 +291,7 @@ async function live(){let ok=false;
   M.slice(1).forEach(r=>{if(r.length<9||!r[0])return;const s=r[0].trim(),fl=parseInt(r[1]);if(isNaN(fl))return;(m[s]=m[s]||{});(m[s][fl]=m[s][fl]||[]).push([r[2],parseInt(r[8])||0,r[3]==="неж"?1:0])});
   const out={};Object.keys(m).sort((a,b)=>a-b).forEach(s=>out[s]=Object.keys(m[s]).map(Number).sort((a,b)=>b-a).map(f=>[f,m[s][f]]));
   if(Object.keys(out).length)MAP=out}catch(e){}
- if(ok){LIVE=true;try{const m=await (await fetch("data/meta.json?v="+Date.now(),{cache:"no-store"})).json();ASOF=new Date(m.updated).toLocaleString("uk-UA",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}catch(e){ASOF="—"}}}
+ if(ok){LIVE=true;try{const m=await (await fetch("data/meta.json?v="+Date.now(),{cache:"no-store"})).json();const fmt=x=>new Date(x).toLocaleString("uk-UA",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});ASOF=fmt(m.updated);CHK=m.checked?fmt(m.checked):""}catch(e){ASOF="—"}}}
 function route(){const m=/^#q(\d+)$/.exec(location.hash);show(m?+m[1]:1,!!m)}
 $("turn").textContent="…";$("asof").textContent="Завантаження даних…";
 const paintAll=()=>{paintTop();paintRows();mshow(cs);route()};
